@@ -1,0 +1,677 @@
+{% extends "base/main.html" %}
+
+{% block title %}Chat - WhatsApp Chat Viewer{% endblock %}
+
+{% block content %}
+<div class="flex-1 flex flex-col bg-whatsapp-gray h-full">
+    <!-- Chat Header -->
+    <div class="bg-white border-b border-gray-200 p-4 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center space-x-3">
+            <div id="selected-phone-avatar" class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                <i class="ri-user-line text-gray-600"></i>
+            </div>
+            <div>
+                <h2 id="selected-phone-name" class="font-semibold text-gray-900">Selecione um número</h2>
+                <p id="selected-phone-status" class="text-sm text-gray-500">Nenhum número selecionado</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <!-- AI Toggle -->
+            <div class="flex items-center space-x-2">
+                <span class="text-sm text-gray-600">IA:</span>
+                <button id="ai-toggle" 
+                        onclick="toggleMainAI()" 
+                        disabled
+                        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-whatsapp-green focus:ring-offset-2 disabled:opacity-50 bg-gray-200">
+                    <span id="ai-toggle-thumb" class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"></span>
+                </button>
+                <span id="ai-status-text" class="text-sm text-gray-500">Inativa</span>
+            </div>
+            <button class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg">
+                <i class="ri-more-2-line text-xl"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Messages Container -->
+    <div class="flex-1 overflow-y-auto custom-scrollbar p-4 min-h-0" id="messages-container">
+        <div class="flex flex-col items-center justify-center h-full text-gray-500">
+            <div class="w-64 h-64 opacity-10 mb-4">
+                <i class="ri-chat-3-line text-9xl"></i>
+            </div>
+            <h3 class="text-xl font-medium mb-2">WhatsApp Chat Viewer</h3>
+            <p class="text-center text-gray-400 max-w-md">
+                Selecione um número na barra lateral para visualizar as conversas e gerenciar as mensagens.
+            </p>
+        </div>
+    </div>
+
+    <!-- Message Input -->
+    <div class="bg-white border-t border-gray-200 p-4 flex-shrink-0">
+        <form id="message-form" onsubmit="sendMessage(event)" class="flex items-center space-x-3">
+            <div class="flex-1 relative">
+                <!-- File selected indicator -->
+                <div id="file-indicator" class="hidden absolute -top-8 left-0 right-0 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1 text-xs text-blue-700 flex items-center justify-between z-10">
+                    <div class="flex items-center space-x-2">
+                        <i class="ri-attachment-line"></i>
+                        <span id="file-name-display"></span>
+                    </div>
+                    <button type="button" onclick="clearSelectedFile()" class="text-blue-500 hover:text-blue-700">
+                        <i class="ri-close-line"></i>
+                    </button>
+                </div>
+                
+                <input type="text" 
+                       id="message-input" 
+                       placeholder="Digite uma mensagem..." 
+                       disabled
+                       class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-whatsapp-green focus:border-transparent disabled:bg-gray-100 disabled:text-gray-500"
+                       maxlength="1000">
+                <input type="file" 
+                       id="attachment-input" 
+                       accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.zip,.rar"
+                       class="hidden"
+                       onchange="handleFileSelect(event)">
+                <button type="button" 
+                        id="attachment-button"
+                        onclick="document.getElementById('attachment-input').click()"
+                        class="absolute right-3 top-3 text-gray-400 hover:text-gray-600 disabled:opacity-50">
+                    <i class="ri-attachment-line text-xl"></i>
+                </button>
+            </div>
+            <button type="submit" 
+                    id="send-button"
+                    disabled
+                    class="w-12 h-12 bg-whatsapp-green text-white rounded-full flex items-center justify-center hover:bg-whatsapp-dark-green transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed">
+                <i class="ri-send-plane-fill text-xl"></i>
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentPhoneNumber = null;
+let currentPhoneId = null;
+let currentAIStatus = false;
+let selectedFile = null;
+
+// Global functions for sidemenu integration
+window.loadMessages = loadMessages;
+window.updateAIToggleState = updateAIToggleState;
+
+async function loadMessages(phoneNumber) {
+    currentPhoneNumber = phoneNumber;
+    
+    // Update header
+    updateChatHeader(phoneNumber);
+    
+    // Enable input
+    document.getElementById('message-input').disabled = false;
+    document.getElementById('send-button').disabled = false;
+    document.getElementById('attachment-button').disabled = false;
+    
+    try {
+        const response = await fetch(`/chat/messages/${encodeURIComponent(phoneNumber)}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            displayMessages(data.messages);
+            lastMessageCount = data.messages.length;
+            
+            // Start polling for new messages
+            startMessagePolling();
+        } else {
+            showToast('Erro ao carregar mensagens', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading messages:', error);
+        showToast('Erro ao carregar mensagens', 'error');
+    }
+}
+
+function updateChatHeader(phoneNumber) {
+    document.getElementById('selected-phone-name').textContent = phoneNumber;
+    document.getElementById('selected-phone-status').textContent = 'Online';
+    
+    // Update avatar with initials
+    const avatar = document.getElementById('selected-phone-avatar');
+    const initials = phoneNumber.slice(-4); // Last 4 digits
+    avatar.innerHTML = `<span class="text-xs font-medium text-white">${initials}</span>`;
+    avatar.className = 'w-10 h-10 bg-whatsapp-green rounded-full flex items-center justify-center';
+}
+
+function updateAIToggleState(phoneId, aiActive) {
+    currentPhoneId = phoneId;
+    currentAIStatus = aiActive;
+    
+    const toggle = document.getElementById('ai-toggle');
+    const thumb = document.getElementById('ai-toggle-thumb');
+    const statusText = document.getElementById('ai-status-text');
+    
+    toggle.disabled = false;
+    
+    if (aiActive) {
+        toggle.className = toggle.className.replace('bg-gray-200', 'bg-whatsapp-green');
+        thumb.className = thumb.className.replace('translate-x-1', 'translate-x-6');
+        statusText.textContent = 'Ativa';
+        statusText.className = 'text-sm text-whatsapp-green';
+    } else {
+        toggle.className = toggle.className.replace('bg-whatsapp-green', 'bg-gray-200');
+        thumb.className = thumb.className.replace('translate-x-6', 'translate-x-1');
+        statusText.textContent = 'Inativa';
+        statusText.className = 'text-sm text-gray-500';
+    }
+}
+
+async function toggleMainAI() {
+    if (!currentPhoneId) return;
+    
+    try {
+        const response = await fetch(`/chat/toggle-ai/${currentPhoneId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Update local state
+            currentAIStatus = !currentAIStatus;
+            updateAIToggleState(currentPhoneId, currentAIStatus);
+            
+            // Reload sidebar to sync
+            if (window.loadPhoneNumbers) {
+                window.loadPhoneNumbers();
+            }
+            
+            showToast('Status da IA alterado', 'success');
+        } else {
+            showToast(data.message || 'Erro ao alterar status da IA', 'error');
+        }
+    } catch (error) {
+        console.error('Error toggling AI:', error);
+        showToast('Erro ao alterar status da IA', 'error');
+    }
+}
+
+function displayMessages(messages) {
+    const container = document.getElementById('messages-container');
+    
+    if (messages.length === 0) {
+        container.innerHTML = `
+            <div class="flex flex-col items-center justify-center h-full text-gray-500">
+                <i class="ri-chat-off-line text-6xl mb-4 opacity-50"></i>
+                <h3 class="text-lg font-medium mb-2">Nenhuma mensagem</h3>
+                <p class="text-center text-gray-400">
+                    Seja o primeiro a enviar uma mensagem para ${currentPhoneNumber}
+                </p>
+            </div>
+        `;
+        return;
+    }
+    
+    const messagesHtml = messages.map(message => {
+        const isUser = message.type === 'user';
+        const messageTime = new Date(message.created_at).toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        // Generate attachment preview
+        let attachmentHtml = '';
+        if (message.attachment_url) {
+            attachmentHtml = generateAttachmentPreview(message);
+        }
+        
+        return `
+            <div class="flex ${isUser ? 'justify-end' : 'justify-start'} mb-3">
+                <div class="flex items-end space-x-2 max-w-xs lg:max-w-md">
+                    ${!isUser ? `
+                        <div class="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center flex-shrink-0">
+                            <i class="ri-robot-line text-white text-sm"></i>
+                        </div>
+                    ` : ''}
+                    <div class="message-enter">
+                        <div class="rounded-lg ${
+                            isUser 
+                                ? 'bg-whatsapp-green text-white rounded-br-sm' 
+                                : 'bg-white text-gray-900 border border-gray-200 rounded-bl-sm'
+                        }">
+                            ${attachmentHtml}
+                            ${message.content ? `<div class="px-4 py-2">
+                                <p class="text-sm whitespace-pre-wrap break-words">${escapeHtml(message.content)}</p>
+                            </div>` : ''}
+                            <div class="flex items-center justify-end px-4 py-2 space-x-1">
+                                <span class="text-xs ${isUser ? 'text-green-100' : 'text-gray-500'}">${messageTime}</span>
+                                ${isUser ? '<i class="ri-check-double-line text-xs text-green-100"></i>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                    ${isUser ? `
+                        <div class="w-8 h-8 bg-whatsapp-green rounded-full flex items-center justify-center flex-shrink-0">
+                            <i class="ri-user-line text-white text-sm"></i>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    container.innerHTML = `<div class="flex flex-col">${messagesHtml}</div>`;
+    
+    // Scroll to bottom
+    container.scrollTop = container.scrollHeight;
+}
+
+async function sendMessage(event) {
+    event.preventDefault();
+    
+    if (!currentPhoneNumber) {
+        showToast('Selecione um número primeiro', 'error');
+        return;
+    }
+    
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+    const attachmentButton = document.getElementById('attachment-button');
+    const content = messageInput.value.trim();
+    
+    if (!content && !selectedFile) {
+        showToast('Digite uma mensagem ou selecione um arquivo', 'error');
+        return;
+    }
+    
+    // Disable inputs while sending
+    messageInput.disabled = true;
+    sendButton.disabled = true;
+    attachmentButton.disabled = true;
+    
+    let loadingToastId = null;
+    
+    try {
+        let attachmentUrl = null;
+        let attachmentFullUrl = null;
+        
+        // Upload file first if there's one selected
+        if (selectedFile) {
+            loadingToastId = showLoadingToast('Enviando arquivo...');
+            
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('phone_number', currentPhoneNumber);
+            
+            const uploadResponse = await fetch('/chat/upload-attachment', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const uploadData = await uploadResponse.json();
+            
+            if (uploadData.success) {
+                attachmentUrl = uploadData.url;
+                attachmentFullUrl = uploadData.full_url;
+                updateLoadingToast(loadingToastId, 'Enviando mensagem...');
+            } else {
+                finishLoadingToast(loadingToastId, uploadData.message || 'Erro ao enviar arquivo', 'error');
+                return;
+            }
+        }
+        
+        // Send message with attachment URL
+        const messageData = {
+            phone_number: currentPhoneNumber,
+            content: content || '',
+            attachment_url: attachmentUrl,
+            attachment_full_url: attachmentFullUrl,
+            attachment_name: selectedFile ? selectedFile.name : null,
+            attachment_type: selectedFile ? getFileType(selectedFile.name) : null,
+            attachment_size: selectedFile ? selectedFile.size : null
+        };
+        
+        const response = await fetch('/chat/send-message', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(messageData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Clear input and file
+            messageInput.value = '';
+            clearSelectedFile();
+            
+            // Reload messages to show the new one
+            loadMessages(currentPhoneNumber);
+            
+            if (loadingToastId) {
+                finishLoadingToast(loadingToastId, 'Mensagem enviada', 'success');
+            } else {
+                showToast('Mensagem enviada', 'success');
+            }
+        } else {
+            if (loadingToastId) {
+                finishLoadingToast(loadingToastId, data.message || 'Erro ao enviar mensagem', 'error');
+            } else {
+                showToast(data.message || 'Erro ao enviar mensagem', 'error');
+            }
+        }
+    } catch (error) {
+        console.error('Error sending message:', error);
+        if (loadingToastId) {
+            finishLoadingToast(loadingToastId, 'Erro ao enviar mensagem', 'error');
+        } else {
+            showToast('Erro ao enviar mensagem', 'error');
+        }
+    } finally {
+        // Re-enable inputs
+        messageInput.disabled = false;
+        sendButton.disabled = false;
+        attachmentButton.disabled = false;
+        messageInput.focus();
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Check file size (max 50MB)
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
+        showToast('Arquivo muito grande. Tamanho máximo: 50MB', 'error');
+        event.target.value = '';
+        return;
+    }
+    
+    selectedFile = file;
+    
+    // Update UI to show file selected
+    const fileIndicator = document.getElementById('file-indicator');
+    const fileNameDisplay = document.getElementById('file-name-display');
+    const fileName = file.name.length > 30 ? file.name.substring(0, 30) + '...' : file.name;
+    
+    fileNameDisplay.textContent = fileName;
+    fileIndicator.classList.remove('hidden');
+    
+    showToast(`Arquivo "${fileName}" selecionado`, 'success');
+}
+
+function clearSelectedFile() {
+    selectedFile = null;
+    const fileIndicator = document.getElementById('file-indicator');
+    fileIndicator.classList.add('hidden');
+    document.getElementById('attachment-input').value = '';
+}
+
+function getFileType(fileName) {
+    const extension = fileName.split('.').pop().toLowerCase();
+    
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) {
+        return 'image';
+    } else if (['mp4', 'avi', 'mov', 'wmv', 'webm'].includes(extension)) {
+        return 'video';
+    } else if (['mp3', 'wav', 'ogg', 'm4a', 'aac'].includes(extension)) {
+        return 'audio';
+    } else if (['pdf'].includes(extension)) {
+        return 'pdf';
+    } else if (['doc', 'docx'].includes(extension)) {
+        return 'document';
+    } else {
+        return 'file';
+    }
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function generateAttachmentPreview(message) {
+    const isUser = message.type === 'user';
+    const fileName = escapeHtml(message.attachment_name || 'Arquivo');
+    const fileSize = message.attachment_size ? formatFileSize(message.attachment_size) : '';
+    const attachmentType = message.attachment_type;
+    
+    switch (attachmentType) {
+        case 'image':
+            return `
+                <div class="attachment-preview">
+                    <img src="${message.attachment_url}" 
+                         alt="${fileName}" 
+                         class="max-w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                         onclick="openImageModal('${message.attachment_url}', '${fileName}')"
+                         loading="lazy">
+                    <div class="px-2 py-1 text-xs ${isUser ? 'text-green-100' : 'text-gray-500'}">
+                        <i class="ri-image-line mr-1"></i>${fileName} ${fileSize ? `• ${fileSize}` : ''}
+                    </div>
+                </div>
+            `;
+            
+        case 'video':
+            return `
+                <div class="attachment-preview">
+                    <video controls class="max-w-full h-auto rounded-lg">
+                        <source src="${message.attachment_url}" type="video/mp4">
+                        Seu navegador não suporta o elemento de vídeo.
+                    </video>
+                    <div class="px-2 py-1 text-xs ${isUser ? 'text-green-100' : 'text-gray-500'}">
+                        <i class="ri-video-line mr-1"></i>${fileName} ${fileSize ? `• ${fileSize}` : ''}
+                    </div>
+                </div>
+            `;
+            
+        case 'audio':
+            return `
+                <div class="attachment-preview p-4">
+                    <div class="flex items-center space-x-3 mb-2">
+                        <div class="w-10 h-10 ${isUser ? 'bg-green-600' : 'bg-blue-500'} rounded-full flex items-center justify-center">
+                            <i class="ri-music-2-line text-white"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-sm font-medium ${isUser ? 'text-white' : 'text-gray-900'}">${fileName}</div>
+                            <div class="text-xs ${isUser ? 'text-green-100' : 'text-gray-500'}">${fileSize}</div>
+                        </div>
+                    </div>
+                    <audio controls class="w-full">
+                        <source src="${message.attachment_url}" type="audio/mpeg">
+                        Seu navegador não suporta o elemento de áudio.
+                    </audio>
+                </div>
+            `;
+            
+        case 'pdf':
+            return `
+                <div class="attachment-preview p-4">
+                    <a href="${message.attachment_url}" target="_blank" 
+                       class="flex items-center space-x-3 hover:opacity-80 transition-opacity">
+                        <div class="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center">
+                            <i class="ri-file-pdf-line text-white text-lg"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-sm font-medium ${isUser ? 'text-white' : 'text-gray-900'}">${fileName}</div>
+                            <div class="text-xs ${isUser ? 'text-green-100' : 'text-gray-500'}">PDF ${fileSize ? `• ${fileSize}` : ''}</div>
+                        </div>
+                        <i class="ri-external-link-line ${isUser ? 'text-green-100' : 'text-gray-400'}"></i>
+                    </a>
+                </div>
+            `;
+            
+        case 'document':
+            return `
+                <div class="attachment-preview p-4">
+                    <a href="${message.attachment_url}" target="_blank" 
+                       class="flex items-center space-x-3 hover:opacity-80 transition-opacity">
+                        <div class="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                            <i class="ri-file-text-line text-white text-lg"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-sm font-medium ${isUser ? 'text-white' : 'text-gray-900'}">${fileName}</div>
+                            <div class="text-xs ${isUser ? 'text-green-100' : 'text-gray-500'}">Documento ${fileSize ? `• ${fileSize}` : ''}</div>
+                        </div>
+                        <i class="ri-external-link-line ${isUser ? 'text-green-100' : 'text-gray-400'}"></i>
+                    </a>
+                </div>
+            `;
+            
+        default:
+            return `
+                <div class="attachment-preview p-4">
+                    <a href="${message.attachment_url}" target="_blank" 
+                       class="flex items-center space-x-3 hover:opacity-80 transition-opacity">
+                        <div class="w-10 h-10 bg-gray-500 rounded-lg flex items-center justify-center">
+                            <i class="ri-file-line text-white text-lg"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-sm font-medium ${isUser ? 'text-white' : 'text-gray-900'}">${fileName}</div>
+                            <div class="text-xs ${isUser ? 'text-green-100' : 'text-gray-500'}">Arquivo ${fileSize ? `• ${fileSize}` : ''}</div>
+                        </div>
+                        <i class="ri-external-link-line ${isUser ? 'text-green-100' : 'text-gray-400'}"></i>
+                    </a>
+                </div>
+            `;
+    }
+}
+
+function openImageModal(imageUrl, fileName) {
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
+    modal.onclick = (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+        }
+    };
+    
+    // Create modal content
+    modal.innerHTML = `
+        <div class="relative max-w-4xl max-h-full">
+            <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(fileName)}" class="max-w-full max-h-full object-contain">
+            <button onclick="document.body.removeChild(this.closest('.fixed'))" 
+                    class="absolute top-4 right-4 text-white hover:text-gray-300 bg-black bg-opacity-50 rounded-full p-2">
+                <i class="ri-close-line text-xl"></i>
+            </button>
+            <div class="absolute bottom-4 left-4 right-4 text-center">
+                <div class="bg-black bg-opacity-50 text-white px-4 py-2 rounded-lg inline-block">
+                    ${escapeHtml(fileName)}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// Auto-resize message input
+document.getElementById('message-input').addEventListener('input', function(e) {
+    // Auto-focus behavior
+    if (e.target.value.length > 0) {
+        e.target.style.paddingRight = '3rem';
+    } else {
+        e.target.style.paddingRight = '3rem';
+    }
+});
+
+// Focus message input when a phone is selected
+document.addEventListener('DOMContentLoaded', function() {
+    // Listen for phone selection changes
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList' && mutation.target.id === 'selected-phone-name') {
+                const phoneText = mutation.target.textContent;
+                if (phoneText !== 'Selecione um número') {
+                    setTimeout(() => {
+                        document.getElementById('message-input').focus();
+                    }, 100);
+                }
+            }
+        });
+    });
+    
+    observer.observe(document.getElementById('selected-phone-name'), {
+        childList: true,
+        subtree: true,
+        characterData: true
+    });
+});
+
+// Auto-refresh messages for real-time updates
+let messagePollingInterval = null;
+let lastMessageCount = 0;
+
+function startMessagePolling() {
+    if (messagePollingInterval) {
+        clearInterval(messagePollingInterval);
+    }
+    
+    // Poll for new messages every 3 seconds when a phone is selected
+    messagePollingInterval = setInterval(() => {
+        if (currentPhoneNumber) {
+            checkForNewMessages();
+        }
+    }, 3000);
+}
+
+function stopMessagePolling() {
+    if (messagePollingInterval) {
+        clearInterval(messagePollingInterval);
+        messagePollingInterval = null;
+    }
+}
+
+async function checkForNewMessages() {
+    if (!currentPhoneNumber) return;
+    
+    try {
+        const response = await fetch(`/chat/messages/${encodeURIComponent(currentPhoneNumber)}`);
+        const data = await response.json();
+        
+        if (data.success && data.messages.length > lastMessageCount) {
+            // New messages detected - reload the display
+            displayMessages(data.messages);
+            lastMessageCount = data.messages.length;
+            
+            // Show notification for new messages
+            const newMessagesCount = data.messages.length - lastMessageCount;
+            if (newMessagesCount > 0) {
+                showToast(`${newMessagesCount} nova(s) mensagem(ns) recebida(s)`, 'info', 3000);
+            }
+        }
+        
+        lastMessageCount = data.messages.length;
+    } catch (error) {
+        console.error('Error checking for new messages:', error);
+        // Don't show error toast for polling failures to avoid spam
+    }
+}
+
+// Stop polling when page is hidden or user leaves
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        stopMessagePolling();
+    } else if (currentPhoneNumber) {
+        startMessagePolling();
+    }
+});
+
+// Stop polling when window is unloaded
+window.addEventListener('beforeunload', function() {
+    stopMessagePolling();
+});
+</script>
+{% endblock %}

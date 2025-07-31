@@ -1,0 +1,297 @@
+<aside class="w-80 bg-white border-r border-gray-200 flex flex-col">
+    <!-- Header -->
+    <div class="p-4 border-b border-gray-200 bg-whatsapp-dark-green text-white">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-whatsapp-green rounded-full flex items-center justify-center">
+                    <i class="ri-user-line text-white text-xl"></i>
+                </div>
+                <div>
+                    <h2 class="font-semibold text-sm">{{ current_user.email }}</h2>
+                    <p class="text-xs opacity-80">WhatsApp Chat Viewer</p>
+                </div>
+            </div>
+            <button onclick="logout()" class="p-2 hover:bg-whatsapp-green rounded-lg transition-colors">
+                <i class="ri-logout-box-line text-lg"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="p-2 border-b border-gray-200">
+        <div class="flex space-x-1">
+            <a href="{{ url_for('templates.chat') }}" 
+               class="nav-item flex-1 flex items-center justify-center py-2 px-3 rounded-lg transition-colors
+                      {% if request.endpoint == 'templates.chat' %}bg-whatsapp-green text-white{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
+                <i class="ri-chat-3-line mr-2"></i>
+                <span class="text-sm font-medium">Chat</span>
+            </a>
+            <a href="{{ url_for('templates.analytics') }}" 
+               class="nav-item flex-1 flex items-center justify-center py-2 px-3 rounded-lg transition-colors
+                      {% if request.endpoint == 'templates.analytics' %}bg-whatsapp-green text-white{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
+                <i class="ri-bar-chart-line mr-2"></i>
+                <span class="text-sm font-medium">Analytics</span>
+            </a>
+            <a href="{{ url_for('templates.settings') }}" 
+               class="nav-item flex-1 flex items-center justify-center py-2 px-3 rounded-lg transition-colors
+                      {% if request.endpoint == 'templates.settings' %}bg-whatsapp-green text-white{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
+                <i class="ri-settings-line mr-2"></i>
+                <span class="text-sm font-medium">Config</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Phone Numbers List -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <div class="p-3 border-b border-gray-200">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-semibold text-gray-800">Números</h3>
+                <button onclick="showAddPhoneModal()" 
+                        class="p-1.5 text-whatsapp-green hover:bg-whatsapp-green hover:text-white rounded-lg transition-colors">
+                    <i class="ri-add-line text-lg"></i>
+                </button>
+            </div>
+            <div class="relative">
+                <input type="text" 
+                       id="phone-search" 
+                       placeholder="Buscar número..." 
+                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-whatsapp-green focus:border-transparent">
+                <i class="ri-search-line absolute right-3 top-2.5 text-gray-400"></i>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto custom-scrollbar" id="phone-list">
+            <!-- Phone numbers will be loaded here -->
+            <div class="p-4 text-center text-gray-500">
+                <i class="ri-loader-4-line animate-spin text-2xl mb-2"></i>
+                <p class="text-sm">Carregando números...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Phone Modal -->
+    <div id="add-phone-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+        <div class="bg-white p-6 rounded-lg w-96 mx-4">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold">Adicionar Número</h3>
+                <button onclick="hideAddPhoneModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="ri-close-line text-xl"></i>
+                </button>
+            </div>
+            <form onsubmit="addPhone(event)">
+                <div class="mb-4">
+                    <label for="new-phone-number" class="block text-sm font-medium text-gray-700 mb-2">
+                        Número do WhatsApp
+                    </label>
+                    <input type="tel" 
+                           id="new-phone-number" 
+                           placeholder="+5511999999999" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-whatsapp-green focus:border-transparent"
+                           required>
+                </div>
+                <div class="flex space-x-3">
+                    <button type="button" 
+                            onclick="hideAddPhoneModal()" 
+                            class="flex-1 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" 
+                            class="flex-1 px-4 py-2 bg-whatsapp-green text-white rounded-lg hover:bg-whatsapp-dark-green transition-colors">
+                        Adicionar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</aside>
+
+<script>
+let selectedPhone = null;
+
+// Load phone numbers on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadPhoneNumbers();
+    
+    // Search functionality
+    document.getElementById('phone-search').addEventListener('input', function(e) {
+        filterPhoneNumbers(e.target.value);
+    });
+});
+
+async function loadPhoneNumbers() {
+    try {
+        const response = await fetch('/chat/phones');
+        const data = await response.json();
+        
+        if (data.success) {
+            displayPhoneNumbers(data.phones);
+        } else {
+            showToast('Erro ao carregar números', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading phone numbers:', error);
+        showToast('Erro ao carregar números', 'error');
+    }
+}
+
+function displayPhoneNumbers(phones) {
+    const phoneList = document.getElementById('phone-list');
+    
+    if (phones.length === 0) {
+        phoneList.innerHTML = `
+            <div class="p-4 text-center text-gray-500">
+                <i class="ri-phone-line text-2xl mb-2"></i>
+                <p class="text-sm">Nenhum número encontrado</p>
+            </div>
+        `;
+        return;
+    }
+    
+    phoneList.innerHTML = phones.map(phone => `
+        <div class="phone-item border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${selectedPhone === phone.number ? 'bg-whatsapp-light-green' : ''}" 
+             onclick="selectPhone('${phone.number}', ${phone.id})" 
+             data-phone="${phone.number}">
+            <div class="p-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center">
+                                <i class="ri-user-line text-gray-600 text-lg"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h4 class="font-medium text-gray-900 truncate">${phone.number}</h4>
+                                <div class="flex items-center space-x-2 text-xs text-gray-500">
+                                    <span>IA: ${phone.ai_active ? 'Ativa' : 'Inativa'}</span>
+                                    <span class="w-1 h-1 bg-gray-400 rounded-full"></span>
+                                    <span>${formatDate(phone.created_at)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="toggleAI(event, ${phone.id})" 
+                                class="ai-toggle p-1.5 rounded-lg transition-colors ${phone.ai_active ? 'bg-whatsapp-green text-white' : 'bg-gray-200 text-gray-600'}">
+                            <i class="ri-robot-line text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function selectPhone(phoneNumber, phoneId) {
+    selectedPhone = phoneNumber;
+    
+    // Update visual selection
+    document.querySelectorAll('.phone-item').forEach(item => {
+        item.classList.remove('bg-whatsapp-light-green');
+    });
+    document.querySelector(`[data-phone="${phoneNumber}"]`).classList.add('bg-whatsapp-light-green');
+    
+    // Load messages for this phone (only on chat page)
+    if (window.loadMessages) {
+        window.loadMessages(phoneNumber);
+    }
+    
+    // Update AI toggle state
+    if (window.updateAIToggleState) {
+        const phone = document.querySelector(`[data-phone="${phoneNumber}"]`);
+        const aiActive = phone.querySelector('.ai-toggle').classList.contains('bg-whatsapp-green');
+        window.updateAIToggleState(phoneId, aiActive);
+    }
+}
+
+async function toggleAI(event, phoneId) {
+    event.stopPropagation();
+    
+    try {
+        const response = await fetch(`/chat/toggle-ai/${phoneId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            loadPhoneNumbers(); // Reload to update AI status
+            showToast('Status da IA alterado', 'success');
+        } else {
+            showToast(data.message || 'Erro ao alterar status da IA', 'error');
+        }
+    } catch (error) {
+        console.error('Error toggling AI:', error);
+        showToast('Erro ao alterar status da IA', 'error');
+    }
+}
+
+function filterPhoneNumbers(searchTerm) {
+    const phoneItems = document.querySelectorAll('.phone-item');
+    
+    phoneItems.forEach(item => {
+        const phoneNumber = item.dataset.phone;
+        const isVisible = phoneNumber.toLowerCase().includes(searchTerm.toLowerCase());
+        item.style.display = isVisible ? 'block' : 'none';
+    });
+}
+
+function showAddPhoneModal() {
+    document.getElementById('add-phone-modal').classList.remove('hidden');
+    document.getElementById('new-phone-number').focus();
+}
+
+function hideAddPhoneModal() {
+    document.getElementById('add-phone-modal').classList.add('hidden');
+    document.getElementById('new-phone-number').value = '';
+}
+
+async function addPhone(event) {
+    event.preventDefault();
+    
+    const phoneNumber = document.getElementById('new-phone-number').value.trim();
+    
+    if (!phoneNumber) {
+        showToast('Por favor, insira um número válido', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/chat/add-phone', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ number: phoneNumber })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            hideAddPhoneModal();
+            loadPhoneNumbers();
+            showToast('Número adicionado com sucesso', 'success');
+        } else {
+            showToast(data.message || 'Erro ao adicionar número', 'error');
+        }
+    } catch (error) {
+        console.error('Error adding phone:', error);
+        showToast('Erro ao adicionar número', 'error');
+    }
+}
+
+async function logout() {
+    try {
+        const response = await fetch('/auth/logout', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            window.location.href = data.redirect;
+        }
+    } catch (error) {
+        console.error('Error logging out:', error);
+        window.location.href = '/login';
+    }
+}
+</script>
