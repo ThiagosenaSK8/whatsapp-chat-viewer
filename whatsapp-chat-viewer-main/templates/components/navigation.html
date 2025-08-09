@@ -1,0 +1,126 @@
+{% macro nav_item(href, text, icon="", active=false, class="", badge="") %}
+<!-- Item de Navegação Reutilizável -->
+<a href="{{ href }}" 
+   class="nav-item flex items-center justify-center py-2 px-3 rounded-lg transition-colors {{ class }}
+          {% if active %}bg-whatsapp-green text-white{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
+    {% if icon %}
+    <i class="{{ icon }} mr-2" aria-hidden="true"></i>
+    {% endif %}
+    <span class="text-sm font-medium">{{ text }}</span>
+    {% if badge %}
+    <span class="ml-2 px-2 py-0.5 text-xs bg-red-500 text-white rounded-full">{{ badge }}</span>
+    {% endif %}
+</a>
+{% endmacro %}
+
+{% macro breadcrumb(items, class="") %}
+<!-- Breadcrumb Navigation -->
+<nav aria-label="Breadcrumb" class="{{ class }}">
+    <ol class="flex items-center space-x-2 text-sm">
+        {% for item in items %}
+        <li class="flex items-center">
+            {% if not loop.first %}
+            <i class="ri-arrow-right-s-line text-gray-400 mx-2" aria-hidden="true"></i>
+            {% endif %}
+            
+            {% if item.href and not loop.last %}
+            <a href="{{ item.href }}" class="text-whatsapp-green hover:text-whatsapp-dark-green transition-colors">
+                {{ item.text }}
+            </a>
+            {% else %}
+            <span class="text-gray-500 {{ 'font-medium' if loop.last else '' }}">
+                {{ item.text }}
+            </span>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ol>
+</nav>
+{% endmacro %}
+
+{% macro tab_navigation(tabs, active_tab="", class="") %}
+<!-- Tab Navigation -->
+<div class="border-b border-gray-200 {{ class }}">
+    <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+        {% for tab in tabs %}
+        <button onclick="switchTab('{{ tab.id }}')"
+                class="py-2 px-1 border-b-2 font-medium text-sm transition-colors
+                       {{ 'border-whatsapp-green text-whatsapp-green' if tab.id == active_tab else 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}"
+                {% if tab.id == active_tab %}aria-selected="true"{% endif %}
+                role="tab">
+            {% if tab.icon %}
+            <i class="{{ tab.icon }} mr-2" aria-hidden="true"></i>
+            {% endif %}
+            {{ tab.label }}
+            {% if tab.count %}
+            <span class="ml-2 py-0.5 px-2 text-xs {{ 'bg-whatsapp-green text-white' if tab.id == active_tab else 'bg-gray-100 text-gray-900' }} rounded-full">
+                {{ tab.count }}
+            </span>
+            {% endif %}
+        </button>
+        {% endfor %}
+    </nav>
+</div>
+{% endmacro %}
+
+{% macro pagination(current_page, total_pages, base_url="", class="") %}
+<!-- Paginação -->
+{% if total_pages > 1 %}
+<nav aria-label="Paginação" class="flex items-center justify-between {{ class }}">
+    <div class="flex-1 flex justify-between sm:hidden">
+        <!-- Mobile pagination -->
+        {% if current_page > 1 %}
+        <a href="{{ base_url }}?page={{ current_page - 1 }}" 
+           class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+            Anterior
+        </a>
+        {% endif %}
+        {% if current_page < total_pages %}
+        <a href="{{ base_url }}?page={{ current_page + 1 }}" 
+           class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+            Próximo
+        </a>
+        {% endif %}
+    </div>
+    
+    <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+        <div>
+            <p class="text-sm text-gray-700">
+                Mostrando página <span class="font-medium">{{ current_page }}</span> de <span class="font-medium">{{ total_pages }}</span>
+            </p>
+        </div>
+        <div>
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <!-- Previous -->
+                {% if current_page > 1 %}
+                <a href="{{ base_url }}?page={{ current_page - 1 }}" 
+                   class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    <i class="ri-arrow-left-s-line" aria-hidden="true"></i>
+                </a>
+                {% endif %}
+                
+                <!-- Page numbers -->
+                {% set start_page = [1, current_page - 2]|max %}
+                {% set end_page = [total_pages, current_page + 2]|min %}
+                
+                {% for page in range(start_page, end_page + 1) %}
+                <a href="{{ base_url }}?page={{ page }}" 
+                   class="relative inline-flex items-center px-4 py-2 border text-sm font-medium
+                          {{ 'z-10 bg-whatsapp-green border-whatsapp-green text-white' if page == current_page else 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50' }}">
+                    {{ page }}
+                </a>
+                {% endfor %}
+                
+                <!-- Next -->
+                {% if current_page < total_pages %}
+                <a href="{{ base_url }}?page={{ current_page + 1 }}" 
+                   class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    <i class="ri-arrow-right-s-line" aria-hidden="true"></i>
+                </a>
+                {% endif %}
+            </nav>
+        </div>
+    </div>
+</nav>
+{% endif %}
+{% endmacro %}

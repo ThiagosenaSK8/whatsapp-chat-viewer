@@ -1,0 +1,51 @@
+{% macro button(text, type="primary", size="md", icon="", onclick="", disabled=false, class="", id="", aria_label="") %}
+<!-- Componente de Botão Reutilizável -->
+{% set base_classes = "inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2" %}
+
+{% set size_classes = {
+    "xs": "px-2 py-1 text-xs",
+    "sm": "px-3 py-1.5 text-sm", 
+    "md": "px-4 py-2 text-sm",
+    "lg": "px-6 py-3 text-base",
+    "xl": "px-8 py-4 text-lg"
+} %}
+
+{% set type_classes = {
+    "primary": "bg-whatsapp-green text-white hover:bg-whatsapp-dark-green focus:ring-whatsapp-green disabled:bg-gray-300",
+    "secondary": "bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500 disabled:bg-gray-100",
+    "danger": "bg-red-500 text-white hover:bg-red-600 focus:ring-red-500 disabled:bg-gray-300",
+    "success": "bg-green-500 text-white hover:bg-green-600 focus:ring-green-500 disabled:bg-gray-300",
+    "warning": "bg-yellow-500 text-white hover:bg-yellow-600 focus:ring-yellow-500 disabled:bg-gray-300",
+    "outline": "border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:ring-gray-500 disabled:bg-gray-50",
+    "ghost": "text-gray-700 hover:bg-gray-100 focus:ring-gray-500 disabled:text-gray-400"
+} %}
+
+<button 
+    type="button"
+    {% if id %}id="{{ id }}"{% endif %}
+    {% if onclick %}onclick="{{ onclick }}"{% endif %}
+    {% if disabled %}disabled{% endif %}
+    {% if aria_label %}aria-label="{{ aria_label }}"{% else %}aria-label="{{ text }}"{% endif %}
+    class="{{ base_classes }} {{ size_classes[size] }} {{ type_classes[type] }} {{ class }} {{ 'cursor-not-allowed opacity-50' if disabled else '' }}">
+    
+    {% if icon %}
+    <i class="{{ icon }} {{ 'mr-2' if text else '' }}" aria-hidden="true"></i>
+    {% endif %}
+    
+    {% if text %}
+    <span>{{ text }}</span>
+    {% endif %}
+</button>
+{% endmacro %}
+
+{% macro icon_button(icon, onclick="", type="ghost", size="sm", class="", id="", aria_label="", title="") %}
+<!-- Botão apenas com ícone -->
+{{ button("", type=type, size=size, icon=icon, onclick=onclick, class=class + " p-2", id=id, aria_label=aria_label or title) }}
+{% endmacro %}
+
+{% macro loading_button(text, type="primary", size="md", loading=false, icon="", onclick="", disabled=false, class="", id="") %}
+<!-- Botão com estado de loading -->
+{% set loading_icon = "ri-loader-4-line animate-spin" if loading else icon %}
+{% set button_text = "Carregando..." if loading else text %}
+{{ button(button_text, type=type, size=size, icon=loading_icon, onclick=onclick, disabled=(disabled or loading), class=class, id=id) }}
+{% endmacro %}

@@ -1,0 +1,117 @@
+{% macro modal(modal_id, title, content="", type="info", size="md", show_close=true, footer="") %}
+<!-- Modal Base Reutilizável -->
+{% set type_config = {
+    "info": {"icon": "ri-information-line", "bg": "bg-blue-500"},
+    "success": {"icon": "ri-check-line", "bg": "bg-green-500"},
+    "warning": {"icon": "ri-alert-line", "bg": "bg-yellow-500"},
+    "danger": {"icon": "ri-error-warning-line", "bg": "bg-red-500"}
+} %}
+
+{% set size_classes = {
+    "sm": "max-w-sm",
+    "md": "max-w-md", 
+    "lg": "max-w-lg",
+    "xl": "max-w-xl"
+} %}
+
+{% set config = type_config[type] %}
+
+<div id="{{ modal_id }}" 
+     class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" 
+     role="dialog" 
+     aria-labelledby="{{ modal_id }}-title"
+     aria-describedby="{{ modal_id }}-description">
+    
+    <div class="bg-white rounded-lg w-full {{ size_classes[size] }} mx-4 transform transition-all duration-200 scale-95 opacity-0" 
+         data-modal-content>
+        <div class="p-6">
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 {{ config.bg }} rounded-full flex items-center justify-center">
+                        <i class="{{ config.icon }} text-white text-lg" aria-hidden="true"></i>
+                    </div>
+                    <h3 id="{{ modal_id }}-title" class="text-lg font-semibold text-gray-900">{{ title }}</h3>
+                </div>
+                {% if show_close %}
+                <button data-modal-close 
+                        class="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500" 
+                        aria-label="Fechar modal">
+                    <i class="ri-close-line text-xl" aria-hidden="true"></i>
+                </button>
+                {% endif %}
+            </div>
+            
+            <!-- Content -->
+            {% if content %}
+            <div id="{{ modal_id }}-description" class="mb-6">
+                {{ content | safe }}
+            </div>
+            {% endif %}
+            
+            <!-- Footer -->
+            {% if footer %}
+            <div class="mt-6">
+                {{ footer | safe }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+{% macro confirm_modal(modal_id, title, message, confirm_text="Confirmar", cancel_text="Cancelar", type="danger", details="") %}
+<!-- Modal de Confirmação -->
+{% set content %}
+<p class="text-gray-600 mb-3">{{ message }}</p>
+{% if details %}
+<div class="p-3 bg-{{ 'red' if type == 'danger' else 'gray' }}-50 border border-{{ 'red' if type == 'danger' else 'gray' }}-200 rounded-lg">
+    <div class="flex items-start space-x-2">
+        <i class="ri-alert-line text-{{ 'red' if type == 'danger' else 'gray' }}-500 mt-0.5 flex-shrink-0" aria-hidden="true"></i>
+        <div>
+            <p class="text-sm font-medium text-{{ 'red' if type == 'danger' else 'gray' }}-800">{{ details }}</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endset %}
+
+{% set footer %}
+<div class="flex space-x-3">
+    <button type="button" 
+            data-modal-close 
+            class="flex-1 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors font-medium">
+        <i class="ri-close-line mr-2" aria-hidden="true"></i>
+        {{ cancel_text }}
+    </button>
+    <button type="button" 
+            data-modal-confirm 
+            class="flex-1 px-4 py-2 bg-{{ 'red' if type == 'danger' else 'blue' }}-500 text-white rounded-lg hover:bg-{{ 'red' if type == 'danger' else 'blue' }}-600 focus:outline-none focus:ring-2 focus:ring-{{ 'red' if type == 'danger' else 'blue' }}-500 focus:ring-offset-2 transition-colors font-medium">
+        <i class="ri-{{ 'delete-bin' if type == 'danger' else 'check' }}-line mr-2" aria-hidden="true"></i>
+        {{ confirm_text }}
+    </button>
+</div>
+{% endset %}
+
+{{ modal(modal_id, title, content, type, "md", true, footer) }}
+{% endmacro %}
+
+{% macro form_modal(modal_id, title, form_content, submit_text="Salvar", cancel_text="Cancelar", form_id="") %}
+<!-- Modal com Formulário -->
+{% set footer %}
+<div class="flex space-x-3">
+    <button type="button" 
+            data-modal-close 
+            class="flex-1 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium">
+        {{ cancel_text }}
+    </button>
+    <button type="submit" 
+            {% if form_id %}form="{{ form_id }}"{% endif %}
+            class="flex-1 px-4 py-2 bg-whatsapp-green text-white rounded-lg hover:bg-whatsapp-dark-green transition-colors font-medium">
+        {{ submit_text }}
+    </button>
+</div>
+{% endset %}
+
+{{ modal(modal_id, title, form_content, "info", "md", true, footer) }}
+{% endmacro %}

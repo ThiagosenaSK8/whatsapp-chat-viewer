@@ -1,0 +1,454 @@
+{% extends "base/main.html" %}
+
+{% block title %}Dashboard - WhatsApp Chat Viewer{% endblock %}
+
+{% block content %}
+<div class="flex-1 flex flex-col bg-gray-50 overflow-hidden">
+    <!-- Welcome Header -->
+    <div class="bg-white shadow-sm border-b border-gray-200 p-3 xs:p-4 sm:p-6 flex-shrink-0">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 xs:space-y-4 sm:space-y-0">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center space-x-3">
+                        <!-- Mobile menu button -->
+                        <button onclick="openMobileSidebar()" 
+                                class="lg:hidden p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0">
+                            <i class="ri-menu-line text-xl"></i>
+                        </button>
+                        
+                        <div class="min-w-0">
+                            <h1 class="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900 truncate">
+                                Bem-vindo, {{ current_user.email.split('@')[0].title() }}! 👋
+                            </h1>
+                            <p class="text-gray-600 mt-1 text-sm xs:text-base">
+                                Gerencie suas conversas do WhatsApp com inteligência artificial
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center justify-end sm:justify-start">
+                    <div class="text-right">
+                        <p class="text-xs xs:text-sm text-gray-500">Último acesso</p>
+                        <p class="text-xs xs:text-sm font-medium text-gray-900" id="current-time">Agora</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats Cards -->
+    <div class="p-3 sm:p-4 lg:p-6 flex-shrink-0">
+        <div class="max-w-7xl mx-auto">
+            <!-- Mobile: 1x4 Grid, Tablet: 2x2 Grid, Desktop: 4x1 Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4 xl:gap-6 mb-4 sm:mb-6 lg:mb-8">
+                <!-- Total Numbers Card -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 lg:p-6">
+                    <div class="flex items-center space-x-3 sm:space-x-4">
+                        <div class="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i class="ri-phone-line text-white text-lg sm:text-xl"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-xs sm:text-sm font-medium text-gray-600 truncate">Total de Números</p>
+                            <p class="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900" id="total-numbers">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Active Numbers Card -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 lg:p-6">
+                    <div class="flex items-center space-x-3 sm:space-x-4">
+                        <div class="w-10 h-10 sm:w-12 sm:h-12 bg-whatsapp-green rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i class="ri-robot-line text-white text-lg sm:text-xl"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-xs sm:text-sm font-medium text-gray-600 truncate">IA Ativa</p>
+                            <p class="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900" id="ai-active-numbers">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Today Messages Card -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 lg:p-6">
+                    <div class="flex items-center space-x-3 sm:space-x-4">
+                        <div class="w-10 h-10 sm:w-12 sm:h-12 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i class="ri-message-3-line text-white text-lg sm:text-xl"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-xs sm:text-sm font-medium text-gray-600 truncate">Mensagens Hoje</p>
+                            <p class="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900" id="today-messages">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Cost Card -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 lg:p-6">
+                    <div class="flex items-center space-x-3 sm:space-x-4">
+                        <div class="w-10 h-10 sm:w-12 sm:h-12 bg-amber-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i class="ri-coins-line text-white text-lg sm:text-xl"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-xs sm:text-sm font-medium text-gray-600 truncate">Custo IA Hoje</p>
+                            <p class="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900" id="ai-cost">R$ 0,00</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 overflow-y-auto">
+        <div class="p-3 sm:p-4 lg:p-6">
+            <div class="max-w-7xl mx-auto">
+                <!-- Mobile: Stack vertically, Tablet: Stack, Desktop: 2-column grid -->
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
+                    <!-- Quick Actions Section -->
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 flex flex-col">
+                        <div class="flex items-center justify-between mb-4 sm:mb-6">
+                            <h2 class="text-base sm:text-lg font-semibold text-gray-900">Ações Rápidas</h2>
+                            <i class="ri-rocket-line text-gray-400 text-lg sm:text-xl"></i>
+                        </div>
+                        
+                        <div class="flex-1 space-y-3 sm:space-y-4">
+                            <!-- Start Chatting -->
+                            <div class="group p-3 sm:p-4 border border-gray-200 rounded-lg hover:border-whatsapp-green hover:bg-whatsapp-green/5 transition-all cursor-pointer"
+                                 onclick="navigateToChat()">
+                                <div class="flex items-center space-x-3 sm:space-x-4">
+                                    <div class="w-10 h-10 sm:w-12 sm:h-12 bg-whatsapp-green/10 group-hover:bg-whatsapp-green rounded-lg flex items-center justify-center transition-colors flex-shrink-0">
+                                        <i class="ri-chat-3-line text-whatsapp-green group-hover:text-white text-lg sm:text-xl transition-colors"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <h3 class="text-sm sm:text-base font-medium text-gray-900 group-hover:text-whatsapp-green transition-colors">
+                                            Iniciar Conversa
+                                        </h3>
+                                        <p class="text-xs sm:text-sm text-gray-600 truncate">
+                                            Selecione um número e comece a conversar
+                                        </p>
+                                    </div>
+                                    <i class="ri-arrow-right-line text-gray-400 group-hover:text-whatsapp-green transition-colors text-lg sm:text-xl flex-shrink-0"></i>
+                                </div>
+                            </div>
+
+                            <!-- Add New Number -->
+                            <div class="group p-3 sm:p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50/50 transition-all cursor-pointer"
+                                 onclick="quickAddPhone()">
+                                <div class="flex items-center space-x-3 sm:space-x-4">
+                                    <div class="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 group-hover:bg-blue-500 rounded-lg flex items-center justify-center transition-colors flex-shrink-0">
+                                        <i class="ri-add-line text-blue-500 group-hover:text-white text-lg sm:text-xl transition-colors"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <h3 class="text-sm sm:text-base font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+                                            Adicionar Número
+                                        </h3>
+                                        <p class="text-xs sm:text-sm text-gray-600 truncate">
+                                            Cadastre um novo número do WhatsApp
+                                        </p>
+                                    </div>
+                                    <i class="ri-arrow-right-line text-gray-400 group-hover:text-blue-500 transition-colors text-lg sm:text-xl flex-shrink-0"></i>
+                                </div>
+                            </div>
+
+                            <!-- View Analytics -->
+                            <div class="group p-3 sm:p-4 border border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50/50 transition-all cursor-pointer"
+                                 onclick="navigateToAnalytics()">
+                                <div class="flex items-center space-x-3 sm:space-x-4">
+                                    <div class="w-10 h-10 sm:w-12 sm:h-12 bg-purple-50 group-hover:bg-purple-500 rounded-lg flex items-center justify-center transition-colors flex-shrink-0">
+                                        <i class="ri-bar-chart-line text-purple-500 group-hover:text-white text-lg sm:text-xl transition-colors"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <h3 class="text-sm sm:text-base font-medium text-gray-900 group-hover:text-purple-600 transition-colors">
+                                            Ver Analytics
+                                        </h3>
+                                        <p class="text-xs sm:text-sm text-gray-600 truncate">
+                                            Visualize estatísticas e relatórios
+                                        </p>
+                                    </div>
+                                    <i class="ri-arrow-right-line text-gray-400 group-hover:text-purple-500 transition-colors text-lg sm:text-xl flex-shrink-0"></i>
+                                </div>
+                            </div>
+
+                            <!-- Settings -->
+                            <div class="group p-3 sm:p-4 border border-gray-200 rounded-lg hover:border-gray-500 hover:bg-gray-50/50 transition-all cursor-pointer"
+                                 onclick="navigateToSettings()">
+                                <div class="flex items-center space-x-3 sm:space-x-4">
+                                    <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gray-100 group-hover:bg-gray-500 rounded-lg flex items-center justify-center transition-colors flex-shrink-0">
+                                        <i class="ri-settings-line text-gray-500 group-hover:text-white text-lg sm:text-xl transition-colors"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <h3 class="text-sm sm:text-base font-medium text-gray-900 group-hover:text-gray-600 transition-colors">
+                                            Configurações
+                                        </h3>
+                                        <p class="text-xs sm:text-sm text-gray-600 truncate">
+                                            Ajuste webhooks e configurações
+                                        </p>
+                                    </div>
+                                    <i class="ri-arrow-right-line text-gray-400 group-hover:text-gray-500 transition-colors text-lg sm:text-xl flex-shrink-0"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity / Getting Started -->
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 flex flex-col">
+                        <div class="flex items-center justify-between mb-4 sm:mb-6">
+                            <h2 class="text-base sm:text-lg font-semibold text-gray-900">Como Começar</h2>
+                            <i class="ri-lightbulb-line text-gray-400 text-lg sm:text-xl"></i>
+                        </div>
+                        
+                        <div class="flex-1 space-y-3 sm:space-y-4 lg:space-y-6">
+                            <!-- Step 1 -->
+                            <div class="flex items-start space-x-3 sm:space-x-4">
+                                <div class="w-6 h-6 sm:w-8 sm:h-8 bg-whatsapp-green rounded-full flex items-center justify-center flex-shrink-0">
+                                    <span class="text-white text-xs sm:text-sm font-bold">1</span>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="text-sm sm:text-base font-medium text-gray-900 mb-1">Adicione um número</h3>
+                                    <p class="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                                        Cadastre o primeiro número do WhatsApp que você deseja gerenciar. 
+                                        Use o formato internacional (+5511999999999).
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Step 2 -->
+                            <div class="flex items-start space-x-3 sm:space-x-4">
+                                <div class="w-6 h-6 sm:w-8 sm:h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <span class="text-white text-xs sm:text-sm font-bold">2</span>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="text-sm sm:text-base font-medium text-gray-900 mb-1">Configure a IA</h3>
+                                    <p class="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                                        Ative ou desative a resposta automática por IA para cada número. 
+                                        A IA pode responder mensagens automaticamente.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Step 3 - Hidden on small screens -->
+                            <div class="flex items-start space-x-3 sm:space-x-4 hidden sm:flex">
+                                <div class="w-6 h-6 sm:w-8 sm:h-8 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <span class="text-white text-xs sm:text-sm font-bold">3</span>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="text-sm sm:text-base font-medium text-gray-900 mb-1">Configure o Webhook</h3>
+                                    <p class="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                                        Nas configurações, defina a URL do webhook para integração 
+                                        com sistemas externos e recebimento de mensagens.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Step 4 -->
+                            <div class="flex items-start space-x-3 sm:space-x-4">
+                                <div class="w-6 h-6 sm:w-8 sm:h-8 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <span class="text-white text-xs sm:text-sm font-bold sm:hidden">3</span>
+                                    <span class="text-white text-xs sm:text-sm font-bold hidden sm:inline">4</span>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="text-sm sm:text-base font-medium text-gray-900 mb-1">Comece a conversar</h3>
+                                    <p class="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                                        Vá para a seção Chat, selecione um número e comece a enviar 
+                                        mensagens, anexos e gerenciar conversas.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Features Highlight -->
+                            <div class="mt-4 sm:mt-6 lg:mt-8 p-3 sm:p-4 bg-gradient-to-r from-whatsapp-green/10 to-blue-50 rounded-lg border border-whatsapp-green/20">
+                                <h4 class="text-sm sm:text-base font-medium text-gray-900 mb-2">✨ Recursos Disponíveis</h4>
+                                <ul class="text-xs sm:text-sm text-gray-600 space-y-1">
+                                    <li>• Envio de mensagens e anexos</li>
+                                    <li>• Integração completa com webhooks</li>
+                                    <li class="hidden sm:list-item">• Analytics detalhados e cálculo de custos</li>
+                                    <li class="hidden sm:list-item">• Interface responsiva estilo WhatsApp Web</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                                    <li>• Gerenciamento inteligente com IA</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Add Phone Modal -->
+    <div id="quick-add-phone-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg w-full max-w-md mx-4 transform transition-all">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                            <i class="ri-add-line text-white"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900">Adicionar Número</h3>
+                    </div>
+                    <button onclick="hideQuickAddModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="ri-close-line text-xl"></i>
+                    </button>
+                </div>
+                <form onsubmit="addPhoneQuick(event)">
+                    <div class="mb-4">
+                        <label for="quick-phone-number" class="block text-sm font-medium text-gray-700 mb-2">
+                            Número do WhatsApp
+                        </label>
+                        <input type="tel" 
+                               id="quick-phone-number" 
+                               placeholder="+5511999999999" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                               required>
+                        <p class="text-xs text-gray-500 mt-1">Use o formato internacional com código do país</p>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button type="button" 
+                                onclick="hideQuickAddModal()" 
+                                class="flex-1 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium">
+                            Cancelar
+                        </button>
+                        <button type="submit" 
+                                class="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium">
+                            Adicionar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Load dashboard data on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateCurrentTime();
+    loadDashboardStats();
+    
+    // Update time every minute
+    setInterval(updateCurrentTime, 60000);
+});
+
+function updateCurrentTime() {
+    const now = new Date();
+    const timeString = now.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    document.getElementById('current-time').textContent = timeString;
+}
+
+async function loadDashboardStats() {
+    try {
+        // Load phone numbers stats
+        const phonesResponse = await fetch('/chat/phones');
+        const phonesData = await phonesResponse.json();
+        
+        if (phonesData.success) {
+            const phones = phonesData.phones;
+            const totalNumbers = phones.length;
+            const aiActiveNumbers = phones.filter(phone => phone.ai_active).length;
+            
+            document.getElementById('total-numbers').textContent = totalNumbers;
+            document.getElementById('ai-active-numbers').textContent = aiActiveNumbers;
+        }
+        
+        // Load today's stats
+        const today = new Date().toISOString().split('T')[0];
+        const analyticsResponse = await fetch(`/analytics/daily-stats?date=${today}`);
+        const analyticsData = await analyticsResponse.json();
+        
+        if (analyticsData.success) {
+            const stats = analyticsData.stats;
+            document.getElementById('today-messages').textContent = stats.total_messages || 0;
+            document.getElementById('ai-cost').textContent = `R$ ${(stats.cost || 0).toFixed(2).replace('.', ',')}`;
+        }
+        
+    } catch (error) {
+        console.error('Error loading dashboard stats:', error);
+    }
+}
+
+// Navigation functions
+function navigateToChat() {
+    window.location.href = '/chat';
+}
+
+function navigateToAnalytics() {
+    window.location.href = '/analytics';
+}
+
+function navigateToSettings() {
+    window.location.href = '/settings';
+}
+
+// Quick add phone modal
+function quickAddPhone() {
+    showModal('quick-add-phone-modal', {
+        onShow: (modal) => {
+            document.getElementById('quick-phone-number').focus();
+        }
+    });
+}
+
+function hideQuickAddModal() {
+    hideModal('quick-add-phone-modal');
+    document.getElementById('quick-phone-number').value = '';
+}
+
+async function addPhoneQuick(event) {
+    event.preventDefault();
+    
+    const phoneNumber = document.getElementById('quick-phone-number').value.trim();
+    
+    if (!phoneNumber) {
+        showToast('Por favor, insira um número válido', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/chat/add-phone', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ number: phoneNumber })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            hideQuickAddModal();
+            showToast('Número adicionado com sucesso', 'success');
+            
+            // Update dashboard stats
+            loadDashboardStats();
+            
+            // Ask if user wants to go to chat
+            setTimeout(() => {
+                if (confirm('Número adicionado! Deseja ir para o Chat e começar uma conversa?')) {
+                    navigateToChat();
+                }
+            }, 1000);
+        } else {
+            showToast(data.message || 'Erro ao adicionar número', 'error');
+        }
+    } catch (error) {
+        console.error('Error adding phone:', error);
+        showToast('Erro ao adicionar número', 'error');
+    }
+}
+
+// Auto-refresh stats every 5 minutes
+setInterval(loadDashboardStats, 5 * 60 * 1000);
+</script>
+{% endblock %}

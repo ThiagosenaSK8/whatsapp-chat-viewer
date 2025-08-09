@@ -1,0 +1,99 @@
+{% extends "base/main.html" %}
+
+{% block title %}Chat - WhatsApp Chat Viewer{% endblock %}
+
+{% block content %}
+<div class="flex-1 flex flex-col bg-whatsapp-gray h-full overflow-hidden">
+    <!-- Chat Header -->
+    <div class="bg-white border-b border-gray-200 p-3 sm:p-4 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center space-x-2 sm:space-x-3 min-w-0">
+            <!-- Mobile menu button -->
+            <button onclick="openMobileSidebar()" 
+                    class="lg:hidden p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0">
+                <i class="ri-menu-line text-xl"></i>
+            </button>
+            
+            <div id="selected-phone-avatar" class="w-8 h-8 sm:w-10 sm:h-10 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
+                <i class="ri-user-line text-gray-600 text-sm sm:text-base"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+                <h2 id="selected-phone-name" class="font-semibold text-gray-900 text-sm sm:text-base truncate">Selecione um número</h2>
+                <p id="selected-phone-status" class="text-xs sm:text-sm text-gray-500 truncate">Nenhum número selecionado</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
+            <!-- AI Toggle -->
+            <div class="flex items-center space-x-1 sm:space-x-2">
+                <span class="text-xs sm:text-sm text-gray-600 hidden xs:inline">IA:</span>
+                <button id="ai-toggle" 
+                        disabled
+                        class="relative inline-flex h-5 w-9 sm:h-6 sm:w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-whatsapp-green focus:ring-offset-2 disabled:opacity-50 bg-gray-200">
+                    <span id="ai-toggle-thumb" class="inline-block h-3 w-3 sm:h-4 sm:w-4 transform rounded-full bg-white transition-transform translate-x-1"></span>
+                </button>
+                <span id="ai-status-text" class="text-xs sm:text-sm text-gray-500 hidden xs:inline">Inativa</span>
+            </div>
+            <button class="p-1.5 sm:p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg">
+                <i class="ri-more-2-line text-lg sm:text-xl"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Messages Container -->
+    <div class="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-4 min-h-0" id="messages-container">
+        <div class="flex flex-col items-center justify-center h-full text-gray-500">
+            <div class="w-32 h-32 sm:w-48 sm:h-48 lg:w-64 lg:h-64 opacity-10 mb-4">
+                <i class="ri-chat-3-line text-6xl sm:text-7xl lg:text-9xl"></i>
+            </div>
+            <h3 class="text-lg sm:text-xl font-medium mb-2">WhatsApp Chat Viewer</h3>
+            <p class="text-center text-gray-400 max-w-xs sm:max-w-md text-sm sm:text-base px-4">
+                Selecione um número na barra lateral para visualizar as conversas e gerenciar as mensagens.
+            </p>
+        </div>
+    </div>
+
+    <!-- Message Input -->
+    <div class="bg-white border-t border-gray-200 p-3 sm:p-4 flex-shrink-0 safe-bottom">
+        <form id="message-form" class="flex items-center space-x-2 sm:space-x-3">
+            <div class="flex-1 relative">
+                <!-- File selected indicator -->
+                <div id="file-indicator" class="hidden absolute -top-8 left-0 right-0 bg-blue-50 border border-blue-200 rounded-lg px-2 sm:px-3 py-1 text-xs text-blue-700 flex items-center justify-between z-10">
+                    <div class="flex items-center space-x-1 sm:space-x-2 min-w-0">
+                        <i class="ri-attachment-line flex-shrink-0"></i>
+                        <span id="file-name-display" class="truncate"></span>
+                    </div>
+                    <button type="button" id="clear-file-btn" class="text-blue-500 hover:text-blue-700 ml-2 flex-shrink-0">
+                        <i class="ri-close-line"></i>
+                    </button>
+                </div>
+                
+                <input type="text" 
+                       id="message-input" 
+                       placeholder="Digite uma mensagem..." 
+                       disabled
+                       class="w-full px-3 sm:px-4 py-2.5 sm:py-3 pr-10 sm:pr-12 text-sm sm:text-base border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-whatsapp-green focus:border-transparent disabled:bg-gray-100 disabled:text-gray-500"
+                       maxlength="1000">
+                <input type="file" 
+                       id="attachment-input" 
+                       accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.zip,.rar"
+                       class="hidden">
+                <button type="button" 
+                        id="attachment-button"
+                        class="absolute right-2 sm:right-3 top-2 sm:top-2.5 text-gray-400 hover:text-gray-600 disabled:opacity-50 p-1">
+                    <i class="ri-attachment-line text-lg sm:text-xl"></i>
+                </button>
+            </div>
+            <button type="submit" 
+                    id="send-button"
+                    disabled
+                    class="w-10 h-10 sm:w-12 sm:h-12 bg-whatsapp-green text-white rounded-full flex items-center justify-center hover:bg-whatsapp-dark-green transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex-shrink-0">
+                <i class="ri-send-plane-fill text-lg sm:text-xl"></i>
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/chat-init.js') }}"></script>
+<script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+{% endblock %}

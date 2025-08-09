@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}WhatsApp Chat Viewer{% endblock %}</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Remix Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.1.0/fonts/remixicon.css" rel="stylesheet">
+    
+    <!-- Custom Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        whatsapp: {
+                            'green': '#25D366',
+                            'dark-green': '#128C7E',
+                            'light-green': '#DCF8C6',
+                            'blue': '#34B7F1',
+                            'gray': '#ECE5DD',
+                            'dark-gray': '#3B4A54'
+                        }
+                    },
+                    screens: {
+                        'xs': '475px',
+                        '3xl': '1600px',
+                    },
+                    spacing: {
+                        'safe-top': 'env(safe-area-inset-top)',
+                        'safe-bottom': 'env(safe-area-inset-bottom)',
+                        'safe-left': 'env(safe-area-inset-left)',
+                        'safe-right': 'env(safe-area-inset-right)',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* Custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        /* Mobile scrollbar adjustments */
+        @media (max-width: 640px) {
+            .custom-scrollbar::-webkit-scrollbar {
+                width: 2px;
+            }
+        }
+        
+        /* Message animations */
+        .message-enter {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Mobile layout improvements */
+        @media (max-width: 768px) {
+            /* Ensure full viewport height on mobile */
+            body {
+                height: 100vh;
+                height: -webkit-fill-available;
+            }
+            
+            /* Handle safe areas for mobile devices */
+            .main-container {
+                padding-left: env(safe-area-inset-left);
+                padding-right: env(safe-area-inset-right);
+            }
+        }
+        
+        /* Prevent zoom on input focus on iOS */
+        @media screen and (max-width: 768px) {
+            input[type="text"],
+            input[type="email"],
+            input[type="password"],
+            textarea {
+                font-size: 16px !important;
+            }
+        }
+        
+        /* Smooth transitions for responsive behavior */
+        .responsive-transition {
+            transition: all 0.3s ease-in-out;
+        }
+        
+        /* Hide scrollbars on mobile for cleaner look */
+        @media (max-width: 640px) {
+            .hide-scrollbar-mobile {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+            
+            .hide-scrollbar-mobile::-webkit-scrollbar {
+                display: none;
+            }
+        }
+        
+        /* Sidebar mobile behavior */
+        @media (max-width: 1024px) {
+            .sidebar-mobile {
+                position: fixed;
+                transform: translateX(-100%);
+                z-index: 40;
+            }
+            
+            .sidebar-mobile.open {
+                transform: translateX(0);
+            }
+        }
+        
+        /* Main content adjustments for mobile */
+        @media (max-width: 640px) {
+            .main-container {
+                flex-direction: column;
+            }
+            
+            main {
+                width: 100%;
+                height: 100%;
+            }
+        }
+        
+        /* Toast positioning improvements */
+        .toast-item {
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 h-screen overflow-hidden touch-manipulation">
+    <!-- Mobile overlay for sidebar toggle -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden hidden"></div>
+    
+    <div class="flex h-full main-container">
+        {% if current_user.is_authenticated %}
+            {% include 'base/sidemenu.html' %}
+        {% endif %}
+        
+        <main class="flex-1 flex flex-col min-w-0 relative">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    
+    <!-- Toast notifications container - Enhanced responsive positioning -->
+    <div id="toast-container" class="fixed top-safe-top top-4 right-safe-right right-2 sm:right-4 z-50 space-y-2 w-[calc(100vw-1rem)] xs:w-[calc(100vw-2rem)] sm:w-auto sm:min-w-[280px] max-w-sm pointer-events-none">
+        <!-- Toast items will have pointer-events-auto -->
+    </div>
+    
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/modal.js') }}"></script>
+    
+    <!-- Mobile sidebar toggle functionality -->
+    <script>
+        // Mobile sidebar management
+        function initializeMobileSidebar() {
+            const sidebarOverlay = document.getElementById('sidebar-overlay');
+            const sidebar = document.querySelector('aside');
+            
+            if (!sidebarOverlay || !sidebar) return;
+            
+            // Close sidebar when overlay is clicked
+            sidebarOverlay.addEventListener('click', function() {
+                closeMobileSidebar();
+            });
+            
+            // Handle escape key to close sidebar
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeMobileSidebar();
+                }
+            });
+            
+            // Handle window resize
+            let resizeTimeout;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(function() {
+                    if (window.innerWidth >= 1024) { // lg breakpoint
+                        closeMobileSidebar();
+                    }
+                }, 100);
+            });
+        }
+        
+        function openMobileSidebar() {
+            const overlay = document.getElementById('sidebar-overlay');
+            const sidebar = document.getElementById('sidebar');
+            
+            if (overlay && sidebar) {
+                overlay.classList.remove('hidden');
+                sidebar.classList.remove('-translate-x-full');
+                sidebar.classList.add('translate-x-0');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+        
+        function closeMobileSidebar() {
+            const overlay = document.getElementById('sidebar-overlay');
+            const sidebar = document.getElementById('sidebar');
+            
+            if (overlay && sidebar) {
+                overlay.classList.add('hidden');
+                sidebar.classList.remove('translate-x-0');
+                sidebar.classList.add('-translate-x-full');
+                document.body.style.overflow = '';
+            }
+        }
+        
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeMobileSidebar();
+            
+            // Set viewport height for mobile
+            const setVH = () => {
+                const vh = window.innerHeight * 0.01;
+                document.documentElement.style.setProperty('--vh', vh + 'px');
+            };
+            
+            setVH();
+            window.addEventListener('resize', setVH);
+            window.addEventListener('orientationchange', setVH);
+        });
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

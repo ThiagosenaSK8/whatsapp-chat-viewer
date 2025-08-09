@@ -1,0 +1,13 @@
+<!-- Modal de Confirmação para Exclusão de Número -->
+<!-- Usando o novo sistema de componentes -->
+{% from 'components/modals/base_modal.html' import confirm_modal %}
+
+{{ confirm_modal(
+    modal_id="delete-phone-modal",
+    title="Excluir Número", 
+    message="Tem certeza que deseja excluir este número?",
+    confirm_text="Excluir",
+    cancel_text="Cancelar",
+    type="danger",
+    details="Atenção: Esta ação é irreversível. Todas as mensagens e histórico de conversas também serão excluídos permanentemente."
+) }}
